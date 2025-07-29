@@ -1,16 +1,33 @@
 
-import pandas as pd
-from datetime import datetime
+import requests
+from bs4 import BeautifulSoup
+import csv
 
-def fetch_events():
-    # Simulácia skutočných dát, neskôr sa nahradí reálnym scrapingom
-    events = [
-        {"Názov": "The Weeknd - Bratislava", "Dátum": "2025-08-10", "Cena (€)": 89, "Zisk (€)": 42, "AttractiScore": 80, "Odporúčanie": "KÚPIŤ"},
-        {"Názov": "Coldplay - Vienna", "Dátum": "2025-08-22", "Cena (€)": 120, "Zisk (€)": 25, "AttractiScore": 74, "Odporúčanie": "NEKÚPIŤ"},
-        {"Názov": "Imagine Dragons - Prague", "Dátum": "2025-09-05", "Cena (€)": 99, "Zisk (€)": 51, "AttractiScore": 90, "Odporúčanie": "KÚPIŤ"},
-    ]
-    df = pd.DataFrame(events)
-    df.to_csv("event_data.csv", index=False)
+def fetch_see_tickets():
+    url = "https://www.seetickets.com/tour/the-weeknd"
+    headers = {"User-Agent": "Mozilla/5.0"}
+    response = requests.get(url, headers=headers)
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    events = []
+    for event in soup.select(".event-item"):
+        try:
+            name = event.select_one(".event-name").get_text(strip=True)
+            date = event.select_one(".event-date").get_text(strip=True)
+            price = event.select_one(".event-price").get_text(strip=True) if event.select_one(".event-price") else "N/A"
+            events.append({"name": name, "date": date, "price": price})
+        except:
+            continue
+
+    return events
+
+def save_to_csv(events, filename="event_data.csv"):
+    with open(filename, mode="w", newline="", encoding="utf-8") as file:
+        writer = csv.DictWriter(file, fieldnames=["name", "date", "price"])
+        writer.writeheader()
+        for event in events:
+            writer.writerow(event)
 
 if __name__ == "__main__":
-    fetch_events()
+    events = fetch_see_tickets()
+    save_to_csv(events)
